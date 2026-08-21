@@ -1,199 +1,229 @@
-# AI-Powered Credit Risk Assessment
+# Credit Card Default Prediction
 
-An explainable machine learning system that predicts the probability of a customer defaulting on their next credit card payment using historical repayment, billing, and payment behavior.
+A machine learning project that predicts whether a credit card customer is likely to default on their payment. The project combines a trained machine learning model with a **FastAPI REST API** to provide real-time default predictions and risk classification.
+
+## Overview
+
+Credit card default prediction is a binary classification problem where the goal is to determine whether a customer is likely to default based on their financial and repayment behavior.
+
+The system accepts customer financial information through a FastAPI endpoint, validates the input using **Pydantic**, processes the data, and uses a trained machine learning model to generate a prediction.
+
+The API returns:
+
+* Default probability
+* Default percentage
+* Risk level
+* Binary prediction
+* Human-readable prediction label
 
 ## Features
 
-- Data preprocessing and exploratory analysis
-- Behavioral feature engineering
-- Logistic Regression and Random Forest model comparison
-- Probability threshold optimization
-- SHAP-based prediction explainability
-- FastAPI REST API for real-time predictions
-- Risk classification into LOW, MEDIUM, and HIGH
+* Predicts credit card payment default
+* Returns probability of default
+* Classifies customers into **LOW, MEDIUM, or HIGH** risk
+* Input validation using Pydantic
+* REST API built with FastAPI
+* Machine learning inference through a trained classification model
+* Interactive API documentation through Swagger UI
+* Structured JSON responses
 
-## Dataset
+## Machine Learning Workflow
 
-The project uses 30,000 customer records containing credit limit, age, six months of repayment status, six months of billing amounts, and six months of payment amounts.
+The complete prediction workflow is:
 
-### Target
+```text
+Customer Financial Data
+        ↓
+FastAPI Endpoint
+        ↓
+Pydantic Input Validation
+        ↓
+Data Preprocessing
+        ↓
+Trained ML Model
+        ↓
+Default Probability
+        ↓
+Risk Classification
+        ↓
+JSON Response
+```
 
-- `0` → No Default
-- `1` → Default
+The model uses customer financial information such as repayment, billing, and payment-related features to estimate the probability of default.
 
-## Feature Engineering
+## API Response
 
-The raw monthly financial and repayment features were transformed into behavioral features to provide the model with more meaningful information about customer payment patterns. From the repayment status features (`PAY_0` to `PAY_6`), the following features were created: `late_payment_count`, which represents the number of months with a positive repayment delay; `max_delay`, which represents the maximum repayment delay; `recent_delay`, which represents the most recent repayment delay; and `avg_delay`, which represents the average positive repayment delay. From the billing features (`BILL_AMT1` to `BILL_AMT6`), `avg_bill`, `max_bill`, and `bill_std` were created to capture the average billing amount, maximum billing amount, and variation in billing amounts. From the payment features (`PAY_AMT1` to `PAY_AMT6`), `avg_payment`, `total_payment`, and `payment_std` were created to capture average payment behavior, total payments, and payment variability.
+The API provides the following response fields:
 
-## Exploratory Findings
+| Field                 | Description                                                                  |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `default_probability` | Model-estimated probability that the customer will default                   |
+| `default_percentage`  | Default probability represented as a percentage                              |
+| `risk_level`          | Customer risk classification: LOW, MEDIUM, or HIGH                           |
+| `prediction`          | Binary prediction where `0` represents no default and `1` represents default |
+| `prediction_label`    | Human-readable interpretation of the prediction                              |
 
-The analysis showed a strong relationship between repeated payment delays and default risk. The observed default rate increased from 11.71% for customers with zero late-payment months to 70.32% for customers with six late-payment months. Recent repayment behavior was also highly informative, with the observed default rate increasing from 13.83% for a recent delay of 0 to 75.78% for a recent delay of 3.
-
-These are observational relationships and should not be interpreted as proof of causation.
-
-## Model Development
-
-Multiple machine learning models were evaluated to compare performance and understand the effect of feature engineering.
-
-| Model | Accuracy | F1 Score | ROC-AUC |
-|---|---:|---:|---:|
-| Logistic Regression | 73.77% | 50.35% | 75.57% |
-| Random Forest | 81.28% | 45.56% | 75.45% |
-
-Feature engineering improved Logistic Regression ROC-AUC from 70.68% to 75.57% and F1 Score from 46.65% to 50.35%.
-
-The Random Forest model achieved higher accuracy and precision but had lower recall at the default 0.5 threshold.
-
-## Threshold Optimization
-
-Different probability thresholds were evaluated for the Random Forest model to find a better balance between precision and recall.
-
-| Threshold | Precision | Recall | F1 Score |
-|---:|---:|---:|---:|
-| 0.20 | 40.41% | 65.71% | 50.04% |
-| 0.30 | 51.28% | 52.83% | 52.04% |
-| 0.40 | 57.94% | 42.88% | 49.29% |
-| 0.50 | 63.78% | 35.57% | 45.67% |
-
-A threshold of `0.30` was selected for the prototype because it produced the highest F1 Score among the tested thresholds.
-
-## Risk Classification
-
-The predicted probability is converted into a risk category using the prototype threshold configuration:
-
-- Probability < `0.30` → LOW
-- `0.30` ≤ Probability < `0.50` → MEDIUM
-- Probability ≥ `0.50` → HIGH
-
-The 0.30 threshold is a prototype operating point and is not intended to represent a universal or production financial-risk threshold.
-
-## Explainability
-
-SHAP (SHapley Additive exPlanations) is used to explain individual model predictions by showing how different features contribute to the predicted default risk.
-
-For example, a customer prediction may return a default probability of 14.67%, with features such as `max_delay`, `avg_delay`, `avg_payment`, `bill_std`, `PAY_AMT1`, and `recent_delay` contributing to the prediction.
-
-Positive SHAP values push the prediction toward default, while negative SHAP values push the prediction away from default. SHAP explains model contribution and should not be interpreted as proof of causality.
-
-## API
-
-The trained model is served using FastAPI.
-
-### Endpoints
-
-- `GET /health` — Checks whether the API is running.
-- `POST /predict` — Accepts customer financial information and returns a default-risk assessment.
-
-### Example Response
+Example response:
 
 ```json
 {
-  "default_probability": 0.3463,
-  "default_percentage": 34.63,
-  "risk_level": "MEDIUM",
-  "prediction": 1,
-  "prediction_label": "Some Risk of Default"
+    "default_probability": 0.23,
+    "default_percentage": 23.0,
+    "risk_level": "MEDIUM",
+    "prediction": 0,
+    "prediction_label": "Customer is unlikely to default"
 }
-Response Fields
-default_probability — Model-estimated probability of default.
-default_percentage — Default probability represented as a percentage.
-risk_level — LOW, MEDIUM, or HIGH.
-prediction — Binary prediction where 0 represents no default and 1 represents default.
-prediction_label — Human-readable interpretation of the prediction.
-Workflow
+```
 
-The complete prediction workflow is: customer financial data is provided to the FastAPI endpoint, the input is validated using Pydantic, the raw repayment, billing, and payment data is transformed into engineered behavioral features, the trained Random Forest model generates a probability of default, the selected 0.30 threshold is applied to generate the binary prediction, the probability is mapped to a LOW, MEDIUM, or HIGH risk category, and SHAP is used to provide an explanation of the model prediction before the final structured response is returned through the API.
+## Tech Stack
 
-System Architecture
-Customer Input
-      ↓
-FastAPI API
-      ↓
-Input Validation
-      ↓
-Feature Engineering
-      ↓
-Random Forest
-      ↓
-Default Probability
-      ↓
-Risk Classification
-      ↓
-SHAP Explanation
-      ↓
-Prediction Response
-Project Structure
-credit-risk-assessment/
+### Machine Learning
+
+* Python
+* Pandas
+* NumPy
+* Scikit-learn
+* Machine Learning Classification
+
+### Backend
+
+* FastAPI
+* Pydantic
+* Uvicorn
+
+### Development
+
+* Jupyter Notebook
+* Git
+* GitHub
+
+## Project Structure
+
+```text
+credit-card-default/
 │
-├── model.ipynb
-├── credit_risk_model.pkl
-├── feature_cols.pkl
-├── default of credit card clients.xls
+├── data/
+│   └── ...
 │
-└── backend/
-    └── main.py
-Tech Stack
-Python
-Pandas
-NumPy
-Scikit-learn
-SHAP
-FastAPI
-Pydantic
-Uvicorn
-Joblib
-Jupyter Notebook
-Installation
+├── notebooks/
+│   └── model_training.ipynb
+│
+├── models/
+│   └── ...
+│
+├── app/
+│   ├── main.py
+│   └── ...
+│
+├── requirements.txt
+├── README.md
+└── .gitignore
+```
 
-Clone the repository:
+## Running the Project Locally
 
+### 1. Clone the repository
+
+```bash
 git clone <your-repository-url>
+cd credit-card-default
+```
 
-Move into the project directory:
+### 2. Create a virtual environment
 
-cd credit-risk-assessment
+```bash
+python -m venv venv
+```
 
-Install the required dependencies:
+Activate it on Windows:
 
-pip install pandas numpy scikit-learn shap fastapi uvicorn joblib xlrd
-Running the Project
+```bash
+venv\Scripts\activate
+```
 
-Open model.ipynb and run the notebook to perform data preprocessing, feature engineering, model training, evaluation, threshold analysis, and SHAP analysis.
+### 3. Install dependencies
 
-The trained model is saved as:
+```bash
+pip install -r requirements.txt
+```
 
-credit_risk_model.pkl
+### 4. Start the FastAPI server
 
-The feature list used during training is saved as:
-
-feature_cols.pkl
-
-To start the FastAPI backend:
-
-cd backend
-uvicorn main:app --reload
+```bash
+uvicorn app.main:app --reload
+```
 
 The API will be available at:
 
+```text
 http://127.0.0.1:8000
+```
 
-Interactive API documentation is available at:
+### 5. Open API Documentation
 
+FastAPI automatically provides interactive Swagger documentation at:
+
+```text
 http://127.0.0.1:8000/docs
-Responsible AI
+```
 
-This project is intended as a credit-risk assessment and decision-support prototype rather than an autonomous lending decision system. SHAP is used to improve prediction explainability, FastAPI and Pydantic provide input validation, and the model focuses on financial and repayment-related information. Before production use, additional validation would be required, including fairness evaluation, probability calibration, model monitoring, security controls, and business validation of risk thresholds.
+You can use the Swagger UI to provide customer information and test predictions directly from the browser.
 
-Future Improvements
-Web-based user interface
-Model calibration
-Hyperparameter optimization
-Model and data drift monitoring
-Fairness evaluation
-Automated testing
-Authentication and authorization
-Secure production deployment
-Improved model monitoring and retraining
-Disclaimer
+## Prediction Logic
 
-This project is a machine learning prototype for credit risk assessment and decision support. It is not intended to make autonomous lending decisions or serve as the sole basis for real-world credit decisions.
+The model produces a probability representing the likelihood that a customer will default.
+
+This probability is then converted into a risk category:
+
+```text
+Model Probability
+       ↓
+Risk Thresholds
+       ↓
+LOW / MEDIUM / HIGH
+```
+
+The binary prediction is:
+
+```text
+0 → Customer is predicted not to default
+1 → Customer is predicted to default
+```
+
+The probability and risk level provide more information than the binary prediction alone, making the output easier to interpret for potential financial risk assessment.
+
+## Example Use Case
+
+A financial institution can use this system to evaluate customers before extending or modifying credit.
+
+For example:
+
+```text
+Customer Financial Data
+        ↓
+ML Model
+        ↓
+Default Probability: 23%
+        ↓
+Risk Level: MEDIUM
+        ↓
+Prediction: No Default
+```
+
+This could help financial institutions identify potentially high-risk customers and support data-driven credit risk decisions.
+
+## Future Improvements
+
+* Add a frontend dashboard for predictions
+* Deploy the API to a cloud platform
+* Add model performance monitoring
+* Experiment with different classification algorithms
+* Perform hyperparameter tuning
+* Add explainable AI techniques such as SHAP
+* Add authentication and authorization
+* Containerize the application using Docker
+* Add automated testing and CI/CD
+
+## Disclaimer
+
+This project is intended for **educational and demonstration purposes**. Predictions from the model should not be used as the sole basis for real-world financial or credit decisions.
